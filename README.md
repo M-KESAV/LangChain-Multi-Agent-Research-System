@@ -97,48 +97,72 @@ TAVILY_API_KEY=your_tavily_api_key_here
 
 ## 🚀 Local Run Instructions (Windows PowerShell)
 
-Run all commands from the repository root:
+Run the backend and frontend in two separate PowerShell terminals:
 
-### 1. Install or update dependencies in the existing virtual environment
+### Terminal 1: FastAPI Backend
 
 ```powershell
+# 1. (Optional) Install or update backend dependencies
 .\venv\Scripts\python.exe -m pip install -r requirements.txt
-```
 
-### 2. Start the FastAPI backend with Uvicorn
-
-```powershell
+# 2. Start the FastAPI backend with Uvicorn
 .\venv\Scripts\uvicorn.exe backend.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-The API will be accessible at:
+The API will be available at:
 - **API Base**: `http://127.0.0.1:8000`
 - **Swagger Documentation**: `http://127.0.0.1:8000/docs`
 - **ReDoc Documentation**: `http://127.0.0.1:8000/redoc`
 
-### 3. Check API health
-
-In a separate PowerShell terminal:
-
+You can verify the backend status at any time:
 ```powershell
 Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/health" -Method Get
 ```
 
-Expected response:
-```json
-{
-  "status": "ok",
-  "database": "connected",
-  "version": "1.0.0"
-}
+---
+
+### Terminal 2: React Frontend (Vite)
+
+```powershell
+# 1. Navigate to the frontend directory
+cd frontend
+
+# 2. (Optional) Install npm packages if running for the first time
+npm install
+
+# 3. Start the Vite React development server
+npm run dev
 ```
 
-### 4. Run the automated test suite
+The frontend will be accessible at:
+- **Local Web UI**: `http://127.0.0.1:5173` (or `http://localhost:5173`)
 
-Execute all 32 automated tests across Phase 2, Phase 3A, and Phase 3B:
+---
+
+## 🧪 Automated Testing
+
+### Backend & Pipeline Tests (Python - 32 tests)
+Run all 32 automated tests across Phase 2, Phase 3A, and Phase 3B:
 
 ```powershell
 .\venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+### Live Backend End-to-End Integration Check
+Run the live integration script against the FastAPI server:
+
+```powershell
+.\venv\Scripts\python.exe scripts/verify_integration.py
+```
+
+### Frontend Tests (Vitest & TypeScript - 12 tests)
+Run component, API client, and typecheck tests:
+
+```powershell
+cd frontend
+npm test
+npm run lint
+npm run build
 ```
 
 ---
