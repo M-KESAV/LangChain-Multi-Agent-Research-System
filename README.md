@@ -1,65 +1,67 @@
 # LangChain Multi-Agent Research System
 
-A powerful multi-agent research system built with LangChain that autonomously researches topics, gathers information, writes comprehensive reports, and evaluates their quality using AI-powered agents.
+A powerful multi-agent research system built with LangChain, Google Gemini, and Tavily that autonomously researches topics, gathers information, scrapes web sources, synthesizes comprehensive reports, evaluates report quality, persists history to SQLite, and streams real-time progress via FastAPI and Server-Sent Events (SSE).
 
 <p align="center">
-  <strong>🔬 Research Automation • 🤖 Multi-Agent Orchestration • 📝 Intelligent Report Generation</strong>
+  <strong>🔬 Research Automation • 🤖 Multi-Agent Orchestration • 📝 Google Gemini LLM • ⚡ FastAPI Backend</strong>
 </p>
 
 ---
 
 ## 🌟 Features
 
-- **Multi-Agent Architecture**: Specialized agents for searching, reading, writing, and critiquing
-- **Automated Web Research**: Intelligent web search with Tavily API
-- **Smart Content Extraction**: Advanced web scraping with multiple fallback strategies
-- **AI-Powered Report Generation**: Automatically generates structured research reports
-- **Quality Evaluation**: Built-in critic agent for report validation and scoring
-- **Interactive UI**: Streamlit-based user interface for easy interaction
-- **Pipeline Orchestration**: Seamless coordination of multiple agents
+- **Multi-Agent Architecture**: Specialized agents for searching, reading, drafting, and critiquing.
+- **Google Gemini Integration**: Native tool calling and high-speed generation with `gemini-3.5-flash-lite`.
+- **Automated Web Research**: Intelligent web search with Tavily API.
+- **Smart Content Extraction**: Multi-strategy web scraping (Trafilatura → Readability + BeautifulSoup → Fallback) with timeout and error handling.
+- **AI-Powered Report Generation & Review**: Automatic synthesis of structured reports with built-in critic scoring and actionable feedback.
+- **SQLite Persistence**: Complete research history stored locally via `aiosqlite` with indexing and concurrency safety.
+- **FastAPI REST API & SSE**: Real-time progress streaming via Server-Sent Events (`started`, `searching`, `reading`, `writing`, `reviewing`, `completed`, `failed`).
+- **CORS Configured**: Ready for local React / Vite frontend development (`http://localhost:5173` and `http://127.0.0.1:5173`).
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│           Streamlit UI (app.py)                     │
-│      Multi-Agent Research Assistant Interface       │
-└──────────────────┬──────────────────────────────────┘
-                   │
-┌──────────────────▼──────────────────────────────────┐
-│      Research Pipeline (pipeline.py)                │
-│        Orchestrates multi-agent workflow            │
-└──────────────────┬──────────────────────────────────┘
-                   │
-    ┌──────────────┼──────────────┐
-    │              │              │
-┌───▼───┐    ┌────▼─────┐   ┌───▼────┐
-│Search │    │   Reader  │   │ Writer │
-│Agent  │    │   Agent   │   │ Chain  │
-└───┬───┘    └────┬─────┘   └───┬────┘
-    │             │             │
-    │  ┌──────────▼─────────┐   │
-    └─▶│  Tools Layer       │◀──┘
-       │                    │
-       │ • web_search      │
-       │ • scrape_url      │
-       │                    │
-       └────────┬───────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│               React / Vite Frontend (Future Phase)              │
+│               http://localhost:5173 / http://127.0.0.1:5173     │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │ REST / SSE
+┌────────────────────────────────▼────────────────────────────────┐
+│               FastAPI Backend (backend/main.py)                 │
+│         Endpoints: /api/health, /api/research, /stream          │
+└───────────────┬────────────────────────────────┬────────────────┘
+                │                                │
+┌───────────────▼──────────────┐  ┌──────────────▼────────────────┐
+│    In-Memory Event Manager   │  │   SQLite Persistence (aiosqlite)
+│     (backend/events.py)      │  │     (src/db/database.py)      │
+└───────────────┬──────────────┘  └───────────────────────────────┘
                 │
-            ┌───▼────────┐
-            │ Critic     │
-            │ Chain      │
-            └────────────┘
+┌───────────────▼─────────────────────────────────────────────────┐
+│              Research Pipeline (src/pipelines/pipeline.py)      │
+│            Orchestrates multi-agent research workflow           │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        │                       │                       │
+┌───────▼───────┐       ┌───────▼───────┐       ┌───────▼───────┐
+│ Search Agent  │       │ Reader Agent  │       │ Writer Chain  │
+│(Gemini + Tool)│       │(Gemini + Tool)│       │(Gemini Prompt)│
+└───────┬───────┘       └───────┬───────┘       └───────┬───────┘
+        │                       │                       │
+        │   ┌───────────────────▼───────────────────┐   │
+        └──▶│             Tools Layer               │◀──┘
+            │  • web_search (TavilyClient)          │
+            │  • scrape_url (Trafilatura/BS4)       │
+            └───────────────────┬───────────────────┘
+                                │
+                        ┌───────▼───────┐
+                        │ Critic Chain  │
+                        │(Gemini Prompt)│
+                        └───────────────┘
 ```
-
-### Agent Responsibilities
-
-- **Search Agent**: Discovers relevant information across the web using Tavily
-- **Reader Agent**: Extracts clean, readable content from URLs
-- **Writer Chain**: Composes structured, professional research reports
-- **Critic Chain**: Evaluates reports and provides improvement suggestions
 
 ---
 
@@ -67,87 +69,101 @@ A powerful multi-agent research system built with LangChain that autonomously re
 
 | Technology | Purpose |
 |-----------|---------|
-| **LangChain** | Multi-agent orchestration and chain management |
-| **OpenAI GPT-4o-mini** | Language model for agents and chains |
-| **Streamlit** | Interactive web UI |
+| **FastAPI & Uvicorn** | High-performance asynchronous backend and SSE streaming server |
+| **LangChain Core & Google GenAI** | Multi-agent orchestration with Google Gemini (`gemini-3.5-flash-lite`) |
 | **Tavily API** | Web search and information retrieval |
-| **BeautifulSoup4** | HTML parsing and content extraction |
-| **Trafilatura** | Web content extraction |
-| **Readability-lxml** | Article content extraction |
-| **Python-dotenv** | Environment configuration management |
-| **Rich** | Terminal output formatting |
+| **aiosqlite** | Asynchronous local SQLite persistence |
+| **Trafilatura & BeautifulSoup4** | Resilient web scraping and clean article text extraction |
+| **Pydantic v2** | Request validation and response serialization |
 
 ---
 
-## 📋 Prerequisites
-
-- Python 3.11 or higher
-- OpenAI API Key
-- Tavily API Key
-
----
-
-## 🚀 Installation
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/yourusername/LangChain-Multi-Agent-Research-System.git
-cd LangChain-Multi-Agent-Research-System
-```
-
-### 2. Create Environment (Conda)
-
-```bash
-conda create -n langagent python=3.11 -y
-conda activate langagent
-```
-
-Or with venv:
-
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-### 3. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Configure Environment Variables
+## 📋 Environment Configuration
 
 Create a `.env` file in the project root:
 
 ```bash
-OPENAI_API_KEY=your_openai_api_key_here
+# Google Gemini API Configuration
+GOOGLE_API_KEY=your_google_api_key_here
+GEMINI_MODEL=gemini-3.5-flash-lite
+
+# Tavily Search API Configuration
 TAVILY_API_KEY=your_tavily_api_key_here
 ```
 
-Get your keys from:
-- [OpenAI API](https://platform.openai.com/api-keys)
-- [Tavily API](https://tavily.com)
+> **Note**: Never commit or share your `.env` file. It is gitignored by default.
 
 ---
 
-## 💡 Usage
+## 🚀 Local Run Instructions (Windows PowerShell)
 
-### Run with Streamlit UI (Recommended)
+Run all commands from the repository root:
 
-```bash
-streamlit run app.py
+### 1. Install or update dependencies in the existing virtual environment
+
+```powershell
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Then open `http://localhost:8501` in your browser.
+### 2. Start the FastAPI backend with Uvicorn
 
-### Run as a Script
-
-```bash
-python main.py
+```powershell
+.\venv\Scripts\uvicorn.exe backend.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Edit the `topic` variable in `main.py` to research different topics.
+The API will be accessible at:
+- **API Base**: `http://127.0.0.1:8000`
+- **Swagger Documentation**: `http://127.0.0.1:8000/docs`
+- **ReDoc Documentation**: `http://127.0.0.1:8000/redoc`
+
+### 3. Check API health
+
+In a separate PowerShell terminal:
+
+```powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/health" -Method Get
+```
+
+Expected response:
+```json
+{
+  "status": "ok",
+  "database": "connected",
+  "version": "1.0.0"
+}
+```
+
+### 4. Run the automated test suite
+
+Execute all 32 automated tests across Phase 2, Phase 3A, and Phase 3B:
+
+```powershell
+.\venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+---
+
+## 📡 API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/health` | Checks API and database connectivity. Never exposes credentials. |
+| `POST` | `/api/research` | Starts a research run in the background. Body: `{"topic": "..."}`. Returns 201 with research `id`. |
+| `GET` | `/api/research/{id}` | Retrieves full details and report of a saved research run. Returns 404 if not found. |
+| `GET` | `/api/research?limit=20` | Lists recent research runs (newest first). Limit validated between 1 and 100. |
+| `DELETE` | `/api/research/{id}` | Deletes a research run by ID from database and memory. Returns 404 if not found. |
+| `GET` | `/api/research/{id}/stream` | Streams Server-Sent Events (SSE) in real time. Delivers past completed/failed state if connected late. |
+
+### SSE Progress Stages
+
+Events sent over `/api/research/{id}/stream` adhere to standard `text/event-stream` format:
+- `started`: Pipeline initialized for topic and run ID.
+- `searching`: Search agent is querying Tavily for web sources.
+- `reading`: Reader agent is scraping and analyzing key web pages.
+- `writing`: Writer agent is synthesizing findings into a comprehensive report.
+- `reviewing`: Critic agent is evaluating and scoring the report.
+- `completed`: Research run finished successfully with full report and critic feedback.
+- `failed`: Emitted on error with safe error message.
 
 ---
 
@@ -155,79 +171,39 @@ Edit the `topic` variable in `main.py` to research different topics.
 
 ```
 .
-├── app.py                      # Streamlit web interface
-├── main.py                     # CLI entry point
+├── backend/
+│   ├── __init__.py
+│   ├── events.py               # In-memory pub/sub and SSE stream generator
+│   ├── main.py                 # FastAPI application, CORS, and route handlers
+│   └── models.py               # Pydantic request/response models
+├── data/
+│   └── research_history.db     # SQLite research history database (gitignored)
+├── src/
+│   ├── agents/
+│   │   ├── __init__.py
+│   │   └── agents.py           # Gemini agents (Search, Reader, Writer, Critic)
+│   ├── db/
+│   │   ├── __init__.py
+│   │   └── database.py         # SQLite persistence layer via aiosqlite
+│   ├── pipelines/
+│   │   ├── __init__.py
+│   │   └── pipeline.py         # 4-stage pipeline with async progress callbacks
+│   └── tools/
+│       ├── __init__.py
+│       └── tools.py            # Lazy TavilyClient & resilient multi-strategy scraper
+├── tests/
+│   ├── test_phase2.py          # Phase 2 agent & tool tests
+│   ├── test_phase3a.py         # Phase 3A database & pipeline tests
+│   └── test_phase3b.py         # Phase 3B FastAPI & SSE tests
+├── main.py                     # CLI entry point (synchronous)
 ├── requirements.txt            # Python dependencies
-├── README.md                   # This file
-├── LICENSE                     # License file
-├── demo.excalidraw            # Architecture diagram
-│
-└── src/
-    ├── __init__.py
-    ├── agents/
-    │   ├── __init__.py
-    │   └── agents.py           # Search, Reader, Writer, Critic agents
-    ├── tools/
-    │   ├── __init__.py
-    │   └── tools.py            # web_search, scrape_url tools
-    └── pipelines/
-        ├── __init__.py
-        └── pipeline.py         # Main research orchestration
+├── .env                        # Local API keys (gitignored)
+├── .env.example                # Example configuration template
+└── README.md                   # Project documentation
 ```
-
----
-
-## 🔄 Workflow
-
-1. **User Input**: Enter a research topic via UI or script
-2. **Search Phase**: Search agent queries the web using Tavily
-3. **Reading Phase**: Reader agent extracts content from relevant URLs
-4. **Writing Phase**: Writer chain synthesizes findings into a structured report
-5. **Review Phase**: Critic chain evaluates the report and provides scores
-6. **Output**: Display final report with feedback and scores
-
----
-
-## 📊 Example Output
-
-The system generates reports with:
-- Comprehensive introduction and background
-- Key findings with detailed explanations
-- Well-sourced conclusions
-- Structured sections and proper formatting
-- Quality scores from 1-10
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
 
 ---
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- Built with [LangChain](https://langchain.com/)
-- Search powered by [Tavily](https://tavily.com)
-- UI built with [Streamlit](https://streamlit.io/)
-- Inspired by agentic AI research patterns
-
----
-
-## 📧 Support
-
-For support, open an issue on GitHub or contact the maintainers.
-
-**Happy Researching! 🚀**

@@ -1,6 +1,20 @@
 import uuid
+import inspect
+from typing import Optional, Callable, Any
 from src.agents.agents import build_search_agent, build_reader_agent, writer_chain, critic_chain
 from src.db.database import save_research_sync, save_research
+
+
+async def _emit_progress(cb: Optional[Callable[[str, dict], Any]], stage: str, data: dict) -> None:
+    """Helper to safely invoke synchronous or asynchronous progress callbacks."""
+    if cb is None:
+        return
+    try:
+        res = cb(stage, data)
+        if inspect.isawaitable(res):
+            await res
+    except Exception:
+        pass
 
 
 def run_research_pipeline(topic: str) -> dict:
@@ -92,16 +106,21 @@ def run_research_pipeline(topic: str) -> dict:
         raise RuntimeError(f"Research pipeline execution failed: {str(e)}") from e
 
 
-async def run_research_pipeline_async(topic: str) -> dict:
+async def run_research_pipeline_async(
+    topic: str,
+    on_progress: Optional[Callable[[str, dict], Any]] = None,
+    run_id: Optional[str] = None
+) -> dict:
     """
     Executes the 4-step multi-agent research pipeline asynchronously.
-    Saves completed or failed runs to SQLite database and returns the result state.
+    Emits granular progress events for streaming interfaces.
+    Saves running, completed, or failed runs to SQLite database and returns the result state.
     """
     if not topic or not isinstance(topic, str) or not topic.strip():
         raise ValueError("Research topic cannot be empty.")
 
     clean_topic = topic.strip()
-    run_id = str(uuid.uuid4())
+    run_id = run_id or str(uuid.uuid4())
     state = {
         "id": run_id,
         "topic": clean_topic,
@@ -113,12 +132,33 @@ async def run_research_pipeline_async(topic: str) -> dict:
     }
 
     try:
+        # Persist initial running state
+        await save_research(state)
+        await _emit_progress(on_progress, "started", {
+            "stage": "started",
+            "id": run_id,
+            "topic": clean_topic,
+            "message": "Research pipeline initialized."
+        })
+
+        # Step 1 - Search agent
+        await _emit_progress(on_progress, "searching", {
+            "stage": "searching",
+            "id": run_id,
+            "message": "Search agent is searching the web for relevant sources..."
+        })
         search_agent = build_search_agent()
         search_result = await search_agent.ainvoke({
             "messages": [("user", f"Find recent, reliable and detailed information about: {clean_topic}")]
         })
         state["search_results"] = search_result['messages'][-1].content
 
+        # Step 2 - Reader agent
+        await _emit_progress(on_progress, "reading", {
+            "stage": "reading",
+            "id": run_id,
+            "message": "Reader agent is scraping and analyzing top resources..."
+        })
         reader_agent = build_reader_agent()
         reader_result = await reader_agent.ainvoke({
             "messages": [("user",
@@ -129,22 +169,40 @@ async def run_research_pipeline_async(topic: str) -> dict:
         })
         state['scraped_content'] = reader_result['messages'][-1].content
 
+        # Step 3 - Writer chain
+        await _emit_progress(on_progress, "writing", {
+            "stage": "writing",
+            "id": run_id,
+            "message": "Writer agent is synthesizing information and drafting the report..."
+        })
         research_combined = (
             f"SEARCH RESULTS : \n {state['search_results']} \n\n"
             f"DETAILED SCRAPED CONTENT : \n {state['scraped_content']}"
         )
-
         state["report"] = await writer_chain.ainvoke({
             "topic": clean_topic,
             "research": research_combined
         })
 
+        # Step 4 - Critic chain
+        await _emit_progress(on_progress, "reviewing", {
+            "stage": "reviewing",
+            "id": run_id,
+            "message": "Critic agent is evaluating and reviewing the report..."
+        })
         state["feedback"] = await critic_chain.ainvoke({
             "report": state['report']
         })
 
         state["status"] = "completed"
         await save_research(state)
+        await _emit_progress(on_progress, "completed", {
+            "stage": "completed",
+            "id": run_id,
+            "topic": clean_topic,
+            "report": state["report"],
+            "feedback": state["feedback"]
+        })
         return state
 
     except Exception as e:
@@ -154,4 +212,9 @@ async def run_research_pipeline_async(topic: str) -> dict:
             await save_research(state)
         except Exception:
             pass
+        await _emit_progress(on_progress, "failed", {
+            "stage": "failed",
+            "id": run_id,
+            "error": str(e)
+        })
         raise RuntimeError(f"Research pipeline execution failed: {str(e)}") from e
