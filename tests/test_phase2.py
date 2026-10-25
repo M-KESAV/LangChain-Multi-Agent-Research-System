@@ -156,19 +156,40 @@ class TestPhase2(unittest.TestCase):
         sample_topic = "Photosynthesis"
         sample_research = "Photosynthesis is the process used by plants to convert light energy into chemical energy. Key steps include light reactions and Calvin cycle."
 
-        # Test Writer
-        report = writer_chain.invoke({
-            "topic": sample_topic,
-            "research": sample_research
-        })
+        import time
+        # Test Writer with transient error retry
+        report = None
+        for attempt in range(3):
+            try:
+                report = writer_chain.invoke({
+                    "topic": sample_topic,
+                    "research": sample_research
+                })
+                break
+            except Exception as e:
+                if attempt < 2 and "503" in str(e):
+                    time.sleep(2)
+                else:
+                    raise
+
         self.assertIsInstance(report, str)
         self.assertIn("Introduction", report)
         self.assertIn("Conclusion", report)
 
-        # Test Critic
-        feedback = critic_chain.invoke({
-            "report": report
-        })
+        # Test Critic with transient error retry
+        feedback = None
+        for attempt in range(3):
+            try:
+                feedback = critic_chain.invoke({
+                    "report": report
+                })
+                break
+            except Exception as e:
+                if attempt < 2 and "503" in str(e):
+                    time.sleep(2)
+                else:
+                    raise
+
         self.assertIsInstance(feedback, str)
         self.assertIn("Score:", feedback)
         self.assertIn("Strengths:", feedback)

@@ -14,7 +14,7 @@ def get_gemini_llm(temperature: float = 0.0) -> ChatGoogleGenerativeAI:
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_API_KEY is not configured in the environment.")
-    model_name = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
     return ChatGoogleGenerativeAI(
         model=model_name,
         google_api_key=api_key,
