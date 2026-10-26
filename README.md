@@ -6,6 +6,11 @@ A powerful multi-agent research system built with LangChain, Google Gemini, and 
   <strong>🔬 Research Automation • 🤖 Multi-Agent Orchestration • 📝 Google Gemini LLM • ⚡ FastAPI Backend</strong>
 </p>
 
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Open%20Website-00C7B7?style=for-the-badge)](https://lang-chain-multi-agent-research-sys.vercel.app)
+
+**Live Website:** https://lang-chain-multi-agent-research-sys.vercel.app
+
 ---
 
 ## 🌟 Features
