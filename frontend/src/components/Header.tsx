@@ -15,37 +15,39 @@ export const Header: React.FC<HeaderProps> = ({
   healthLoading,
   onNewResearch,
   onToggleSidebar,
+  isSidebarOpen,
 }) => {
   const isHealthy = health?.status === 'ok' && health?.database === 'connected';
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-4 sm:px-6 py-3.5 transition-all">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-        {/* Left: Brand */}
-        <div className="flex items-center gap-3">
+    <header className="shrink-0 z-30 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl px-3 sm:px-6 py-3 transition-all duration-300">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+        {/* Left: Brand & Mobile Sidebar Toggle */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            aria-expanded={isSidebarOpen}
+            className="md:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 active:bg-slate-800 border border-transparent hover:border-slate-700/60 transition-all duration-200 shrink-0"
             aria-label="Toggle history sidebar"
           >
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20 ring-1 ring-white/20">
-              <Sparkles className="w-5 h-5 text-white" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/25 ring-1 ring-white/20 shrink-0 group-hover:scale-105 transition-transform">
+              <Sparkles className="w-5 h-5 text-white animate-pulse" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-base sm:text-lg text-white tracking-tight">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="font-extrabold text-sm sm:text-lg text-white tracking-tight truncate">
                   Multi-Agent AI
                 </span>
-                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
                   Research System
                 </span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">
+              <p className="text-[11px] text-slate-400 hidden lg:block truncate">
                 Autonomous Deep Research • LangChain • Gemini • Tavily
               </p>
             </div>
@@ -53,10 +55,33 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Right: Actions & Health Status */}
-        <div className="flex items-center gap-3">
-          {/* Health status pill */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Mobile Status Indicator */}
           <div
-            className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+            className={`flex sm:hidden items-center justify-center p-2 rounded-xl border text-xs ${
+              healthLoading
+                ? 'bg-slate-900 text-amber-400 border-amber-500/30'
+                : isHealthy
+                ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800/50'
+                : 'bg-rose-950/60 text-rose-400 border-rose-800/50'
+            }`}
+            title={`Status: ${isHealthy ? 'Connected' : 'Disconnected'} (API: ${health?.status || 'connecting'}, DB: ${health?.database || 'unknown'})`}
+            aria-label="Connection Status"
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                healthLoading
+                  ? 'bg-amber-400 animate-ping'
+                  : isHealthy
+                  ? 'bg-emerald-400 animate-pulse'
+                  : 'bg-rose-500'
+              }`}
+            />
+          </div>
+
+          {/* Desktop Health status pill */}
+          <div
+            className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors shadow-sm ${
               healthLoading
                 ? 'bg-slate-900 text-slate-400 border-slate-800'
                 : isHealthy
@@ -93,10 +118,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onNewResearch}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 active:from-indigo-700 text-white shadow-md shadow-indigo-600/25 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] border border-indigo-400/20"
           >
-            <PlusCircle className="w-4 h-4" />
-            <span>New Research</span>
+            <PlusCircle className="w-4 h-4 shrink-0" />
+            <span className="whitespace-nowrap">New Research</span>
           </button>
         </div>
       </div>

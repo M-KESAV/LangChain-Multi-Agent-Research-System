@@ -15,9 +15,11 @@ A powerful multi-agent research system built with LangChain, Google Gemini, and 
 - **Automated Web Research**: Intelligent web search with Tavily API.
 - **Smart Content Extraction**: Multi-strategy web scraping (Trafilatura → Readability + BeautifulSoup → Fallback) with timeout and error handling.
 - **AI-Powered Report Generation & Review**: Automatic synthesis of structured reports with built-in critic scoring and actionable feedback.
-- **SQLite Persistence**: Complete research history stored locally via `aiosqlite` with indexing and concurrency safety.
+- **Strict Citation & Source Grounding**: In-text numerical citations `[N]` mapped 1-to-1 to verified sources discovered by Tavily, eliminating fabricated references.
+- **SQLite Persistence**: Complete research history stored locally via `aiosqlite` with WAL mode and concurrency safety.
 - **FastAPI REST API & SSE**: Real-time progress streaming via Server-Sent Events (`started`, `searching`, `reading`, `writing`, `reviewing`, `completed`, `failed`).
-- **CORS Configured**: Ready for local React / Vite frontend development (`http://localhost:5173` and `http://127.0.0.1:5173`).
+- **Modern React UI**: Polished dashboard built with Vite, TypeScript, and Tailwind CSS.
+- **Production-Ready Configuration**: Dynamic CORS origins and port binding for container and static hosting.
 
 ---
 
@@ -25,8 +27,8 @@ A powerful multi-agent research system built with LangChain, Google Gemini, and 
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│               React / Vite Frontend (Future Phase)              │
-│               http://localhost:5173 / http://127.0.0.1:5173     │
+│           React + Vite Frontend (TypeScript & Tailwind)         │
+│           http://localhost:5173 / http://127.0.0.1:5173         │
 └────────────────────────────────┬────────────────────────────────┘
                                  │ REST / SSE
 ┌────────────────────────────────▼────────────────────────────────┐
@@ -80,18 +82,49 @@ A powerful multi-agent research system built with LangChain, Google Gemini, and 
 
 ## 📋 Environment Configuration
 
-Create a `.env` file in the project root:
+### 1. Backend Configuration (`.env`)
+
+Create a `.env` file in the project root for local development, or configure these variables securely in your backend hosting environment (e.g., Render, Railway):
 
 ```bash
-# Google Gemini API Configuration
+# Google Gemini API Configuration (Keep secret on backend)
 GOOGLE_API_KEY=your_google_api_key_here
 GEMINI_MODEL=gemini-3.5-flash-lite
 
-# Tavily Search API Configuration
+# Tavily Search API Configuration (Keep secret on backend)
 TAVILY_API_KEY=your_tavily_api_key_here
+
+# Optional Production Deployment Configuration
+CORS_ORIGINS=https://your-frontend-domain.vercel.app
+PORT=8000
 ```
 
-> **Note**: Never commit or share your `.env` file. It is gitignored by default.
+| Variable | Required | Description |
+|---|---|---|
+| `GOOGLE_API_KEY` | **Yes** | Google Gemini API key used by the research and critic agents. Keep secret and configure on backend only. |
+| `TAVILY_API_KEY` | **Yes** | Tavily API key for web search and source discovery. Keep secret and configure on backend only. |
+| `GEMINI_MODEL` | No | Configurable Google Gemini model name. Defaults to `gemini-3.5-flash-lite`. |
+| `CORS_ORIGINS` | No | Comma-separated list of additional allowed frontend origins for deployment. Defaults to local Vite development origins (`http://localhost:5173`, `http://127.0.0.1:5173`, `http://localhost:3000`, `http://127.0.0.1:3000`). |
+| `PORT` | No | Server port supplied dynamically by cloud hosting platforms, defaulting to `8000`. |
+
+> **Security Note**: Never commit or share your `.env` file. It is gitignored by default.
+
+### 2. Frontend Configuration (`frontend/.env`)
+
+The `frontend/.env.example` file serves as a local development template:
+
+```bash
+# Frontend API Base URL
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+| Variable | Required | Description |
+|---|---|---|
+| `VITE_API_BASE_URL` | **Yes** (Prod) | Base URL pointing to the FastAPI backend API. In local development, defaults to `http://127.0.0.1:8000`. In production frontend hosting (e.g., Vercel, Netlify, Cloudflare Pages), this **must be configured at build time** to your deployed backend URL (e.g. `https://your-backend.onrender.com`). |
+
+### 3. Persistent Storage Notice
+
+> **Storage Notice**: Completed research runs are persisted locally in an SQLite database (`data/research_history.db`) with Write-Ahead Logging (`WAL`) mode enabled for concurrent read/write safety. When deploying the backend to free ephemeral cloud containers (e.g., Render or Railway free tier without an attached persistent disk), local disk files reset on container restart unless a persistent volume or external database is configured.
 
 ---
 
@@ -141,26 +174,26 @@ The frontend will be accessible at:
 
 ## 🧪 Automated Testing
 
-### Backend & Pipeline Tests (Python - 32 tests)
-Run all 32 automated tests across Phase 2, Phase 3A, and Phase 3B:
+### Backend & Pipeline Tests (Python - 50 tests)
+Run all 50 automated tests across Phase 2, Phase 3A, Phase 3B, Phase 5 (citations), and regression suites:
 
 ```powershell
 .\venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
 ### Live Backend End-to-End Integration Check
-Run the live integration script against the FastAPI server:
+Run the live integration script against the running FastAPI server:
 
 ```powershell
 .\venv\Scripts\python.exe scripts/verify_integration.py
 ```
 
-### Frontend Tests (Vitest & TypeScript - 12 tests)
-Run component, API client, and typecheck tests:
+### Frontend Tests (Vitest & TypeScript - 13 tests)
+Run component, API client, lint, and production build checks:
 
 ```powershell
 cd frontend
-npm test
+npm test -- --run
 npm run lint
 npm run build
 ```
@@ -198,31 +231,50 @@ Events sent over `/api/research/{id}/stream` adhere to standard `text/event-stre
 ├── backend/
 │   ├── __init__.py
 │   ├── events.py               # In-memory pub/sub and SSE stream generator
-│   ├── main.py                 # FastAPI application, CORS, and route handlers
-│   └── models.py               # Pydantic request/response models
+│   ├── main.py                 # FastAPI application, dynamic CORS/port, and routes
+│   └── models.py               # Pydantic request/response models with source schemas
 ├── data/
 │   └── research_history.db     # SQLite research history database (gitignored)
+├── frontend/
+│   ├── public/                 # Static assets and icons
+│   ├── src/
+│   │   ├── __tests__/          # Vitest suite (client & component tests)
+│   │   ├── api/                # Typed REST & SSE API client
+│   │   ├── components/         # React components (Header, ReportViewer, Form, etc.)
+│   │   ├── types/              # TypeScript interfaces and types
+│   │   ├── App.tsx             # Main dashboard application
+│   │   ├── index.css           # Tailwind CSS styles & design tokens
+│   │   └── main.tsx            # Vite React entry point
+│   ├── .env.example            # Frontend environment variable template
+│   ├── package.json            # Frontend dependencies & scripts
+│   ├── vite.config.ts          # Vite build & dev server configuration
+│   └── vitest.config.ts        # Vitest test configuration
 ├── src/
 │   ├── agents/
 │   │   ├── __init__.py
 │   │   └── agents.py           # Gemini agents (Search, Reader, Writer, Critic)
 │   ├── db/
 │   │   ├── __init__.py
-│   │   └── database.py         # SQLite persistence layer via aiosqlite
+│   │   └── database.py         # SQLite persistence layer with WAL mode via aiosqlite
 │   ├── pipelines/
 │   │   ├── __init__.py
-│   │   └── pipeline.py         # 4-stage pipeline with async progress callbacks
+│   │   └── pipeline.py         # 4-stage pipeline with async progress & citation pipeline
 │   └── tools/
 │       ├── __init__.py
-│       └── tools.py            # Lazy TavilyClient & resilient multi-strategy scraper
+│       ├── citations.py        # In-text citation validation & source normalization
+│       └── tools.py            # Lazy TavilyClient, URL extraction & multi-strategy scraper
 ├── tests/
 │   ├── test_phase2.py          # Phase 2 agent & tool tests
 │   ├── test_phase3a.py         # Phase 3A database & pipeline tests
-│   └── test_phase3b.py         # Phase 3B FastAPI & SSE tests
+│   ├── test_phase3b.py         # Phase 3B FastAPI & SSE tests
+│   ├── test_citations.py       # Citation mapping and normalization tests
+│   └── test_phase5.py          # Phase 5 source extraction & regression tests
+├── scripts/
+│   └── verify_integration.py   # Backend API & SSE integration check script
 ├── main.py                     # CLI entry point (synchronous)
 ├── requirements.txt            # Python dependencies
 ├── .env                        # Local API keys (gitignored)
-├── .env.example                # Example configuration template
+├── .env.example                # Backend configuration template
 └── README.md                   # Project documentation
 ```
 

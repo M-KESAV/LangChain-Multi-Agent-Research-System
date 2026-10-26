@@ -40,7 +40,9 @@ def _run_async(coro):
 async def init_db(db_path: str = None) -> None:
     """Initializes the SQLite database and creates the required schema and indexes."""
     path = get_db_path(db_path)
-    async with aiosqlite.connect(path) as db:
+    async with aiosqlite.connect(path, timeout=5.0) as db:
+        await db.execute("PRAGMA journal_mode=WAL;")
+        await db.execute("PRAGMA busy_timeout=5000;")
         await db.execute("""
             CREATE TABLE IF NOT EXISTS research_history (
                 id TEXT PRIMARY KEY,
@@ -89,16 +91,22 @@ async def save_research(run_data: dict, db_path: str = None) -> str:
 
     metadata_val = run_data.get("metadata", {})
     if isinstance(metadata_val, dict):
-        # Ensure no sensitive credentials/keys are stored in metadata
         sanitized_meta = {
             k: v for k, v in metadata_val.items()
             if not any(s in k.lower() for s in ("api_key", "secret", "password", "token", "credential"))
         }
-        metadata_str = json.dumps(sanitized_meta)
     elif isinstance(metadata_val, str):
-        metadata_str = metadata_val
+        try:
+            sanitized_meta = json.loads(metadata_val)
+        except Exception:
+            sanitized_meta = {}
     else:
-        metadata_str = "{}"
+        sanitized_meta = {}
+
+    if "sources" in run_data and "sources" not in sanitized_meta:
+        sanitized_meta["sources"] = run_data["sources"]
+
+    metadata_str = json.dumps(sanitized_meta)
 
     now_iso = datetime.now(timezone.utc).isoformat()
     created_at = str(run_data.get("created_at") or now_iso)
@@ -119,7 +127,8 @@ async def save_research(run_data: dict, db_path: str = None) -> str:
             updated_at = excluded.updated_at
     """
 
-    async with aiosqlite.connect(path) as db:
+    async with aiosqlite.connect(path, timeout=5.0) as db:
+        await db.execute("PRAGMA busy_timeout=5000;")
         await db.execute(
             query,
             (run_id, topic, status, search_results, scraped_content, report, feedback, metadata_str, created_at, updated_at)
@@ -140,7 +149,8 @@ async def get_research_by_id(run_id: str, db_path: str = None) -> dict | None:
     await init_db(path)
 
     query = "SELECT * FROM research_history WHERE id = ?"
-    async with aiosqlite.connect(path) as db:
+    async with aiosqlite.connect(path, timeout=5.0) as db:
+        await db.execute("PRAGMA busy_timeout=5000;")
         db.row_factory = aiosqlite.Row
         async with db.execute(query, (run_id,)) as cursor:
             row = await cursor.fetchone()
@@ -151,6 +161,7 @@ async def get_research_by_id(run_id: str, db_path: str = None) -> dict | None:
                 data["metadata"] = json.loads(data["metadata"]) if data.get("metadata") else {}
             except Exception:
                 data["metadata"] = {}
+            data["sources"] = data["metadata"].get("sources", []) if isinstance(data["metadata"], dict) else []
             return data
 
 
@@ -170,7 +181,8 @@ async def list_recent_research(limit: int = 50, db_path: str = None) -> list[dic
         ORDER BY created_at DESC
         LIMIT ?
     """
-    async with aiosqlite.connect(path) as db:
+    async with aiosqlite.connect(path, timeout=5.0) as db:
+        await db.execute("PRAGMA busy_timeout=5000;")
         db.row_factory = aiosqlite.Row
         async with db.execute(query, (limit,)) as cursor:
             rows = await cursor.fetchall()
@@ -181,6 +193,7 @@ async def list_recent_research(limit: int = 50, db_path: str = None) -> list[dic
                     item["metadata"] = json.loads(item["metadata"]) if item.get("metadata") else {}
                 except Exception:
                     item["metadata"] = {}
+                item["sources"] = item["metadata"].get("sources", []) if isinstance(item["metadata"], dict) else []
                 results.append(item)
             return results
 
@@ -196,7 +209,8 @@ async def delete_research(run_id: str, db_path: str = None) -> bool:
     await init_db(path)
 
     query = "DELETE FROM research_history WHERE id = ?"
-    async with aiosqlite.connect(path) as db:
+    async with aiosqlite.connect(path, timeout=5.0) as db:
+        await db.execute("PRAGMA busy_timeout=5000;")
         cursor = await db.execute(query, (run_id,))
         await db.commit()
         return cursor.rowcount > 0

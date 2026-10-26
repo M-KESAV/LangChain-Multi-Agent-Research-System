@@ -26,6 +26,7 @@ class ResearchSummaryResponse(BaseModel):
     status: str
     report: Optional[str] = None
     feedback: Optional[str] = None
+    sources: list[dict[str, Any]] = Field(default_factory=list)
     metadata: Optional[dict[str, Any]] = None
     created_at: str
     updated_at: str
@@ -39,6 +40,7 @@ class ResearchDetailResponse(BaseModel):
     scraped_content: Optional[str] = None
     report: Optional[str] = None
     feedback: Optional[str] = None
+    sources: list[dict[str, Any]] = Field(default_factory=list)
     metadata: Optional[dict[str, Any]] = None
     created_at: str
     updated_at: str

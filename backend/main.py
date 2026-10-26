@@ -1,3 +1,4 @@
+import os
 import uuid
 import asyncio
 import logging
@@ -7,6 +8,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.encoders import jsonable_encoder
 
 from src.db.database import (
     get_db_path,
@@ -35,13 +37,24 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS configuration for frontend clients (Vite / React)
-origins = [
+# Base local development origins
+default_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
+
+# Read optional comma-separated CORS_ORIGINS from environment for production deployments
+configured_origins = []
+raw_cors = os.getenv("CORS_ORIGINS", "")
+if raw_cors:
+    for origin_entry in raw_cors.split(","):
+        cleaned = origin_entry.strip().rstrip("/")
+        if cleaned and cleaned not in default_origins and cleaned not in configured_origins:
+            configured_origins.append(cleaned)
+
+origins = default_origins + configured_origins
 
 app.add_middleware(
     CORSMiddleware,
@@ -50,9 +63,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-from fastapi.encoders import jsonable_encoder
 
 
 @app.exception_handler(RequestValidationError)
@@ -193,4 +203,5 @@ async def stream_research(research_id: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=port, reload=True)

@@ -22,12 +22,21 @@ export interface ResearchCreateResponse {
   message: string;
 }
 
+export interface SourceItem {
+  title?: string;
+  url: string;
+  snippet?: string;
+  status?: 'scraped' | 'discovered' | 'failed';
+  error?: string;
+}
+
 export interface ResearchSummary {
   id: string;
   topic: string;
   status: 'running' | 'completed' | 'failed';
   report?: string | null;
   feedback?: string | null;
+  sources?: SourceItem[];
   metadata?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
@@ -41,6 +50,7 @@ export interface ResearchDetail {
   scraped_content?: string | null;
   report?: string | null;
   feedback?: string | null;
+  sources?: SourceItem[];
   metadata?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;

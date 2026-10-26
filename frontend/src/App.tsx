@@ -120,6 +120,7 @@ export const App: React.FC = () => {
   // Handle Starting New Research
   const handleStartResearch = async (topic: string) => {
     closeEventSource();
+    setIsSidebarOpen(false);
     setGeneralError(null);
     setSelectedDetail(null);
     setActiveTopic(topic);
@@ -269,10 +270,11 @@ export const App: React.FC = () => {
     setCurrentStage('idle');
     setGeneralError(null);
     setStageEvents([]);
+    setIsSidebarOpen(false);
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="h-full h-[100dvh] w-full bg-slate-950 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(99,102,241,0.14),rgba(15,23,42,0))] text-slate-100 flex flex-col font-sans overflow-hidden selection:bg-indigo-500/30 selection:text-indigo-200">
       {/* Top Navigation Bar */}
       <Header
         health={health}
@@ -282,9 +284,9 @@ export const App: React.FC = () => {
         isSidebarOpen={isSidebarOpen}
       />
 
-      {/* Main Layout Body */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Collapsible History Sidebar */}
+      {/* Main Layout Body - Flex-1 with min-h-0 prevents unbounded content expansion */}
+      <div className="flex-1 flex overflow-hidden min-h-0 relative">
+        {/* Collapsible History Sidebar - Scrolls independently */}
         <Sidebar
           history={history}
           loading={historyLoading}
@@ -296,23 +298,23 @@ export const App: React.FC = () => {
           onClose={() => setIsSidebarOpen(false)}
         />
 
-        {/* Workspace Canvas */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 py-8">
-          <div className="max-w-5xl mx-auto space-y-8">
-            {/* General Alert */}
+        {/* Workspace Canvas - Scrolls independently with bounded viewport */}
+        <main className="flex-1 h-full min-h-0 overflow-y-auto overscroll-contain px-3 sm:px-6 md:px-8 py-6 sm:py-8">
+          <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8 pb-20">
+            {/* General Alert Banner */}
             {generalError && (
-              <div className="p-4 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-200 flex items-start justify-between gap-3 shadow-lg">
+              <div className="p-4 rounded-2xl bg-rose-950/70 border border-rose-800/80 text-rose-200 flex items-start justify-between gap-3 shadow-xl backdrop-blur-xl animate-fade-in-up">
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
                   <div className="text-xs sm:text-sm">
-                    <p className="font-semibold text-rose-300">Notice</p>
-                    <p className="mt-0.5 text-rose-200/90">{generalError}</p>
+                    <p className="font-bold text-rose-300">Notice</p>
+                    <p className="mt-0.5 text-rose-200/90 leading-relaxed">{generalError}</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setGeneralError(null)}
-                  className="text-xs text-rose-400 hover:text-white underline font-medium"
+                  className="text-xs text-rose-400 hover:text-white px-2 py-1 rounded-lg bg-rose-900/40 hover:bg-rose-900/80 transition-colors font-medium shrink-0"
                 >
                   Dismiss
                 </button>
@@ -321,9 +323,12 @@ export const App: React.FC = () => {
 
             {/* View 1: Loading Report Details */}
             {detailLoading ? (
-              <div className="py-24 text-center space-y-3">
-                <Loader2 className="w-8 h-8 animate-spin mx-auto text-indigo-400" />
-                <p className="text-sm font-medium text-slate-400">Loading research report...</p>
+              <div className="py-24 text-center space-y-3 animate-fade-in-up">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto shadow-lg shadow-indigo-500/10">
+                  <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+                </div>
+                <p className="text-sm font-semibold text-slate-300">Loading research report...</p>
+                <p className="text-xs text-slate-500">Fetching stored report, sources, and peer evaluations</p>
               </div>
             ) : isResearching ? (
               /* View 2: Active Real-time SSE Progress */
@@ -344,7 +349,7 @@ export const App: React.FC = () => {
               />
             ) : (
               /* View 4: Default Start Research Workspace */
-              <div className="space-y-10">
+              <div className="space-y-8 sm:space-y-12">
                 <ResearchForm
                   onSubmit={handleStartResearch}
                   isLoading={isResearching}

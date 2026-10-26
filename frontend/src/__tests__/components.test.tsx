@@ -1,6 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import React from 'react';
 import { Header } from '../components/Header';
 import { ResearchForm } from '../components/ResearchForm';
 import { ProgressTimeline } from '../components/ProgressTimeline';
@@ -103,7 +102,47 @@ describe('Frontend UI Components', () => {
     // Switch to Sources tab
     const sourcesTab = screen.getByRole('button', { name: /Sources & Intelligence/i });
     fireEvent.click(sourcesTab);
-    expect(screen.getByText('https://example.com/fusion-breakthrough')).toBeDefined();
-    expect(screen.getByText('https://energy.org/fusion-report')).toBeDefined();
+    expect(screen.getAllByText('https://example.com/fusion-breakthrough').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('https://energy.org/fusion-report').length).toBeGreaterThan(0);
+  });
+
+  it('ReportViewer renders structured sources with titles and status badges', () => {
+    const mockDetailWithSources: ResearchDetail = {
+      id: 'test-structured-id',
+      topic: 'Quantum Computing 2026',
+      status: 'completed',
+      sources: [
+        {
+          title: 'Nature Quantum Advances',
+          url: 'https://nature.com/articles/quantum-2026',
+          snippet: 'Major breakthrough in error correction codes.',
+          status: 'scraped',
+        },
+        {
+          title: 'MIT Tech Review: Quantum Algorithms',
+          url: 'https://technologyreview.com/quantum-algorithms',
+          snippet: 'Commercial viability reached in simulation.',
+          status: 'discovered',
+        },
+      ],
+      report: '# Quantum Computing Report\n\nQuantum algorithms are advancing [1].',
+      feedback: 'Score: 9/10',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    render(<ReportViewer research={mockDetailWithSources} onDelete={vi.fn()} />);
+
+    // Switch to Sources tab
+    const sourcesTab = screen.getByRole('button', { name: /Sources & Intelligence \(2\)/i });
+    fireEvent.click(sourcesTab);
+
+    expect(screen.getByText('Nature Quantum Advances')).toBeDefined();
+    expect(screen.getByText('https://nature.com/articles/quantum-2026')).toBeDefined();
+    expect(screen.getByText('Scraped')).toBeDefined();
+
+    expect(screen.getByText('MIT Tech Review: Quantum Algorithms')).toBeDefined();
+    expect(screen.getByText('https://technologyreview.com/quantum-algorithms')).toBeDefined();
+    expect(screen.getByText('Discovered')).toBeDefined();
   });
 });

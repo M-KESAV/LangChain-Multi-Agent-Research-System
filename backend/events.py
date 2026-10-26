@@ -162,7 +162,8 @@ async def stream_research_events(run_id: str, heartbeat_timeout: float = 15.0) -
             "id": run_id,
             "topic": record.get("topic", ""),
             "report": record.get("report", ""),
-            "feedback": record.get("feedback", "")
+            "feedback": record.get("feedback", ""),
+            "sources": record.get("sources", []),
         })
     else:
         meta = record.get("metadata", {})

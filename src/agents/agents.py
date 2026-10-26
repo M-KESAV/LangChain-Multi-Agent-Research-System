@@ -66,27 +66,41 @@ def build_reader_agent():
 
 # Writer Chain Prompt
 writer_prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are an expert research writer. Write clear, structured and insightful reports."),
-    ("human", """Write a detailed research report on the topic below.
+    ("system", """You are an expert technical research analyst and writer.
+You write authoritative, objective, deeply informative, and rigorously cited research reports based strictly on verified research intelligence.
+
+CORE CITATION & GROUNDING RULES:
+1. Ground every claim and finding in the provided Research Gathered data.
+2. In-text citations are MANDATORY: cite your sources directly in the text using strictly numbered brackets: [1], [2], [3], etc. NEVER use author or shorthand names in brackets (e.g. do NOT write [IDTechEx] or [Nature]); use strictly the corresponding numerical index [N].
+3. Every in-text citation [N] MUST map 1-to-1 consistently to the exact numbered entry [N] in the '## Sources & References' section at the end of the report.
+4. Every citation and URL in your report MUST strictly match a source provided in the VERIFIED DISCOVERED SOURCES list. Each cited URL and source MUST belong to an actual source returned in that list. NEVER invent, fabricate, or guess URLs, domain names, citations, publication dates, or statistics.
+5. Evidence requirement: NEVER claim that a source supports a statement unless the retrieved snippet or scraped content actually provides evidence for that statement. If information is uncertain or incomplete, state that limitation clearly.
+6. If no usable external sources or URLs were discovered, explicitly report that the topic lacks verified citations and do not use numerical citations.
+7. End the report with a dedicated '## Sources & References' section listing each cited numbered entry [N] with its verified Title and canonical URL."""),
+    ("human", """Write a comprehensive, professional research report on the topic below.
 
 Topic: {topic}
 
 Research Gathered:
 {research}
 
-Structure the report as:
-- Introduction
-- Key Findings (minimum 3 well-explained points)
-- Conclusion
-- Sources (list all URLs found in the research)
+Structure the report with clear markdown formatting:
+# [Topic Title]
+## Introduction & Executive Summary
+## Key Findings (minimum 3 well-grounded, detailed sections with in-text numerical citations [N])
+## In-Depth Analysis & Practical Implications
+## Conclusion & Strategic Outlook
+## Sources & References (strictly numbered [1], [2] matching the in-text citations and verified sources)
 
-Be detailed, factual and professional."""),
+Be detailed, factual, and maintain strict academic/industry rigor."""),
 ])
 
 
 # Critic Chain Prompt
 critic_prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are a sharp and constructive research critic. Be honest and specific."),
+    ("system", """You are a rigorous and constructive research critic. Be honest, objective, and specific.
+Evaluate the report for structural quality, empirical depth, factual grounding, and especially source citation coverage and citation-to-source consistency.
+Verify that every in-text citation [N] corresponds consistently to a numbered entry in Sources & References, that no fabricated references are cited, and that claims are supported by the cited sources."""),
     ("human", """Review the research report below and evaluate it strictly.
 
 Report:
@@ -102,6 +116,9 @@ Strengths:
 
 Areas to Improve:
 - ...
+- ...
+
+Citation & Source Quality:
 - ...
 
 One line verdict:
